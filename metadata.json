@@ -1,0 +1,6 @@
+{
+  "name": "사운드로그 — 밴드 공연 정보·직관 기록",
+  "description": "서울 인디·밴드 공연 탐색과 나만의 직관 기록장 서비스",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

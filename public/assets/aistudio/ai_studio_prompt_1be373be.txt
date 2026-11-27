@@ -1,0 +1,46 @@
+[Google AI Studio → Build → New app 입력창에 아래를 통째로 붙여 넣기]
+
+"밴드 공연 정보·직관 기록 서비스" 웹앱을 만들어 줘. 사용자는 서울에서 인디·밴드 공연을 자주 보러 다니는 20대 팬이야.
+
+## 데이터베이스
+- TiDB Cloud(MySQL 호환)에 이미 만든 데이터베이스 band_db를 사용해.
+- 서버(백엔드)에서 Node.js + mysql2 로 연결하고, 접속 정보는 코드에 적지 말고 Secrets(환경변수)에서 읽어:
+  DB_HOST, DB_PORT(4000), DB_USER, DB_PASSWORD, DB_NAME(band_db)
+- TiDB Cloud는 TLS가 필수라서 ssl: { minVersion: 'TLSv1.2', rejectUnauthorized: true } 로 연결해.
+- 브라우저(프론트엔드)는 DB에 직접 붙지 말고, 서버의 API만 부르게 해.
+- SQL은 반드시 ? 자리표시자(prepared statement)로 실행해.
+
+## 표 (이미 만들어져 있음, 구조를 바꾸지 마)
+- venues(venue_id, venue_name)
+- gigs(gig_id, kopis_id, venue_id, gig_title, gig_type ENUM('공연','페스티벌'), gig_date, end_date, poster_url)
+- bands(band_id, band_name)
+- gig_bands(gig_id, band_id, play_order)
+- users(user_id, nickname)
+- band_follows(user_id, band_id)
+- attendances(attendance_id, user_id, gig_id, memo, created_at)  ← 같은 (user_id, gig_id)는 한 번만 들어감(UNIQUE)
+
+## VIEW (화면은 되도록 이것을 읽어)
+- v_kpi(전체_공연수, 공연장수, 다가오는_공연수, 단독_비율)
+- v_weekday(요일번호, 요일, 공연수)
+- v_venue_visits(회원, 공연장, 공연수, 간_횟수)
+- v_follow_upcoming(회원, 날짜, 밴드, 공연, 공연장)
+- v_my_log(회원, 날짜, 공연, 공연장, 메모)
+
+## 화면 4개
+1. 홈: v_kpi 숫자 카드 4개 + v_weekday 요일별 공연 수 막대그래프
+2. 공연 찾기: gigs JOIN venues. "다가오는 공연"(gig_date >= 오늘)과 "페스티벌"(gig_type='페스티벌') 탭, 공연명·공연장 검색, 날짜순. 포스터(poster_url)가 있으면 작게 보여 줘.
+3. 공연장: v_venue_visits에서 선택한 회원 기준 공연 많은 순 TOP 15. 가 본 곳(간_횟수>0)과 안 가 본 곳을 색으로 구분.
+4. 내 직관 기록장 (이 서비스의 차별점):
+   - 위쪽에서 회원(users.nickname)을 고른다. (로그인은 만들지 마)
+   - v_my_log 최근 순 목록 + 누적 관람 횟수
+   - v_follow_upcoming으로 "팔로우한 밴드의 다가오는 공연"
+   - "기록하기": 이미 지난 공연(gig_date < 오늘) 중 하나를 검색해 고르고 한 줄 메모(200자 이내)를 적으면
+     INSERT INTO attendances (user_id, gig_id, memo) VALUES (?, ?, ?)
+     같은 공연을 또 기록하면(중복 오류) "이미 기록한 공연이에요"라고 알려 줘.
+   - 내 기록 옆 "삭제" 버튼: DELETE FROM attendances WHERE attendance_id = ? AND user_id = ?
+
+## 규칙
+- 데이터를 바꾸는 것은 attendances의 INSERT/DELETE 두 가지뿐. 다른 표는 읽기만 해.
+- 한국어 화면, 휴대폰에서도 보기 좋게.
+- 모든 화면 아래에 출처 표시:
+  "데이터 출처: (재)예술경영지원센터 공연예술통합전산망(www.kopis.or.kr) · 회원·팔로우·직관 기록은 과제용 가상 데이터"
